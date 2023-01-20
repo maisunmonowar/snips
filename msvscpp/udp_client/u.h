@@ -19,11 +19,20 @@ public:
 	char recvbuf[DEFAULT_BUFLEN] = { 0 };
 	int recvbuflen = DEFAULT_BUFLEN;
 	int iResult;
+	enum udp_error_status
+	{
+		all_ok,
+		connection_failed,
+		wsa_startup_error,
+		addrinfo_error
+	};
+	udp_error_status error_status_self = all_ok;
 
 	MySocketClass();
 	~MySocketClass();
 	int sendData(char* ourMessage, int ourMessage_size);
 	bool receiveSomething();
+
 private:
 	bool connectionActive = false;
 };
