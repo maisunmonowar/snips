@@ -26,7 +26,7 @@ public:
 		wsa_startup_error,
 		addrinfo_error
 	};
-	udp_error_status error_status_self = all_ok;
+	udp_error_status error_status_self = all_ok; // If the init wasn't successfull, this will change. 
 
 	MySocketClass();
 	~MySocketClass();
