@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <string>
 
 std::ifstream::pos_type filesize(const char* filename)
 {
@@ -21,6 +22,19 @@ int main()
     auto sizee = filesize(filename_parsed);
     std::cout << sizee << std::endl;
     std::ifstream in(filename_parsed, std::ifstream::ate | std::ifstream::binary);
-    std::cout << in.tellg();
+
+    auto our_size = in.tellg();
     in.close();
+    if (in.good())
+    {
+        std::cout << "good" << std::endl;
+    }
+    else
+    {
+        std::cout << "not good" << std::endl;
+    }
+    auto our_msg = std::to_string(our_size);
+    our_msg.append(" size our string is. ");
+    std::cout << our_msg;
+
 }
