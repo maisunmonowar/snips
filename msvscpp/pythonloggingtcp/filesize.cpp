@@ -36,7 +36,7 @@ int sendLog(
     // get the path from json file
     using json = nlohmann::json;
     //std::ifstream f("unpickled.json");
-    //json data = json::parse(f);
+    //json data2 = json::parse(f);
     //f.close();
 
     json data = json::parse(R"(
@@ -63,7 +63,8 @@ int sendLog(
     "process": 0
 }
 )");
-   /* data["name"] = name;
+  
+    data["name"] = name;
     data["msg"] = msg;
 
     switch (levelno)
@@ -93,7 +94,7 @@ int sendLog(
     data["pathname"] = pathname;
 
     data["created"] = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    */
+    
     //int processs = data["process"];
     ///int threadd = data["thread"];
     //std::cout << processs + threadd;
@@ -174,7 +175,8 @@ int sendLog(
     }
 
     // Send an initial buffer
-    sendbuf = data.dump().c_str(); // json data is now serialized
+    auto s1 = data.dump();
+    sendbuf = s1.c_str(); // json data is now serialized
     int slen = (int)strlen(sendbuf);
     char clen[4];
     clen[3] = slen & 0x000000ff;
