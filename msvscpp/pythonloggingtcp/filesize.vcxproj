@@ -143,7 +143,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="filesize.cpp" />
+    <ClCompile Include="pythonlogging.cpp" />
+    <ClCompile Include="pythonlogging2.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pythonlogging2.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
