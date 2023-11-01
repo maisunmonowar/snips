@@ -9,6 +9,7 @@
 #include <fstream>
 #include <string>
 #include <iostream>
+#include <chrono>
 
 
 // Need to link with Ws2_32.lib, Mswsock.lib, and Advapi32.lib
@@ -19,48 +20,93 @@
 
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT "9020"
+#define HOST "localhost"
 
-int __cdecl main(int argc, char** argv)
+enum errorLevel { NOTSET=0, DEBUG=10, INFO=20, WARNING=30, ERRORR=40, CRITICAL=50};
+
+int sendLog(
+    std::string msg, 
+    std::string name, 
+    int levelno, 
+    std::string filename, 
+    std::string modulee, 
+    std::string funcName,
+    std::string pathname) 
 {
     // get the path from json file
     using json = nlohmann::json;
-    std::ifstream f("unpickled.json");
-    json data = json::parse(f);
-    f.close();
+    //std::ifstream f("unpickled.json");
+    //json data = json::parse(f);
+    //f.close();
 
-    json data2 = json::parse(R"(
+    json data = json::parse(R"(
     {
     "name": "root",
-    "msg": "J",
+    "msg": "empty",
     "args": null,
     "levelname": "INFO",
     "levelno": 20,
     "pathname": "C:\\Users\\MaisunIbnMonowar\\Documents\\code\\dektec_demod\\pythonScripts\\sender.py",
-    "filename": "sender.py",
-    "module": "sender",
+    "filename": "empty",
+    "module": "empty",
     "exc_info": null,
     "exc_text": null,
     "stack_info": null,
-    "lineno": 12,
-    "funcName": "<module>",
-    "created": 1698224991.8459082,
-    "msecs": 845.0,
-    "relativeCreated": 31.246185302734375,
-    "thread": 15796,
-    "threadName": "MainThread",
-    "processName": "MainProcess",
-    "process": 19924
+    "lineno": 0,
+    "funcName": "empty",
+    "created": 0.0,
+    "msecs": 0,
+    "relativeCreated": 0,
+    "thread": 0,
+    "threadName": "empty",
+    "processName": "empty",
+    "process": 0
 }
 )");
-    int processs = data["process"];
-    int threadd = data["thread"];
-    std::cout << processs + threadd;
-    std::string json_str = data.dump();
+   /* data["name"] = name;
+    data["msg"] = msg;
 
+    switch (levelno)
+    {
+    case CRITICAL:
+        data["levelname"] = "CRITICAL";
+        break;
+    case ERRORR:
+        data["levelname"] = "ERROR";
+        break;
+    case WARNING:
+        data["levelname"] = "WARNING";
+        break;
+    case INFO:
+        data["levelname"] = "INFO";
+        break;
+    case DEBUG:
+        data["levelname"] = "DEBUG";
+        break;
+    default:
+        data["levelname"] = "NOTSET";
+        break;
+    }
+    data["filename"] = filename;
+    data["module"] = modulee;
+    data["funcName"] = funcName; 
+    data["pathname"] = pathname;
+
+    data["created"] = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    */
+    //int processs = data["process"];
+    ///int threadd = data["thread"];
+    //std::cout << processs + threadd;
+    //std::string json_str = data.dump();
+
+    //std::cout << data["name"] << std::endl;
+    //std::cout << funcName << std::endl;
+    //data["name"] = funcName;
+    //std::cout << data["name"] << std::endl;
 
     // get the path form config
     //std::string pathRaw = data["data_location"].dump();
-    
+
     WSADATA wsaData;
     SOCKET ConnectSocket = INVALID_SOCKET;
     struct addrinfo* result = NULL,
@@ -72,10 +118,10 @@ int __cdecl main(int argc, char** argv)
     int recvbuflen = DEFAULT_BUFLEN;
 
     // Validate the parameters
-    if (argc != 2) {
-        printf("usage: %s server-name\n", argv[0]);
-        return 1;
-    }
+//    if (argc != 2) {
+  //      printf("usage: %s server-name\n", argv[0]);
+    //    return 1;
+    //}
 
     // Initialize Winsock
     iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -90,7 +136,7 @@ int __cdecl main(int argc, char** argv)
     hints.ai_protocol = IPPROTO_TCP;
 
     // Resolve the server address and port
-    iResult = getaddrinfo(argv[1], DEFAULT_PORT, &hints, &result);
+    iResult = getaddrinfo(HOST, DEFAULT_PORT, &hints, &result);
     if (iResult != 0) {
         printf("getaddrinfo failed with error: %d\n", iResult);
         WSACleanup();
@@ -128,12 +174,12 @@ int __cdecl main(int argc, char** argv)
     }
 
     // Send an initial buffer
-    sendbuf = json_str.c_str();
+    sendbuf = data.dump().c_str(); // json data is now serialized
     int slen = (int)strlen(sendbuf);
     char clen[4];
     clen[3] = slen & 0x000000ff;
     clen[2] = (slen >> 8) & 0x000000ff;
-    clen[1] = (slen>> 16) & 0x000000ff;
+    clen[1] = (slen >> 16) & 0x000000ff;
     clen[0] = (slen >> 24) & 0x000000ff;
     iResult = send(ConnectSocket, clen, 4, 0);
     iResult = send(ConnectSocket, sendbuf, (int)strlen(sendbuf), 0);
@@ -171,6 +217,14 @@ int __cdecl main(int argc, char** argv)
     // cleanup
     closesocket(ConnectSocket);
     WSACleanup();
-    
+
+
+    return 0;
+}
+int __cdecl main(int argc, char** argv)
+{
+    sendLog("test info", "root", INFO, "filename", "module", "funcName", "pathname");
+    sendLog("test critical", "root", CRITICAL, "anotherFilename", "anothermodule", "aotherfunc", "anotherPath");
+
     return 0;
 }
