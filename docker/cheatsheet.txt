@@ -1,0 +1,27 @@
+# Docker Cheatsheet
+
+## Docker Images
+- `docker images`: List all images
+- `docker rmi IMAGE_ID`: Remove an image
+- `docker pull IMAGE_NAME`: Pull an image from Docker Hub
+- `docker build -t IMAGE_NAME .`: Build an image from a Dockerfile in the current directory
+
+## Docker Containers
+- `docker ps`: List running containers
+- `docker ps -a`: List all containers
+- `docker run IMAGE_NAME`: Run a container from an image
+- `docker run -d IMAGE_NAME`: Run a container in detached mode
+- `docker run -p HOST_PORT:CONTAINER_PORT IMAGE_NAME`: Run a container with port mapping
+- `docker stop CONTAINER_ID`: Stop a running container
+- `docker rm CONTAINER_ID`: Remove a container
+- `docker exec -it CONTAINER_ID COMMAND`: Execute a command in a running container
+
+## Docker Compose
+- `docker-compose up`: Start services defined in docker-compose.yml
+- `docker-compose down`: Stop services defined in docker-compose.yml
+- `docker-compose build`: Build services defined in docker-compose.yml
+
+## File mount
+- docker run -it --rm -v "%cd%\app":/app ubuntu:latest #cmd
+- docker run -it --rm -v "${PWD}/source:/source" python:latest /bin/sh #powershell
+- docker run -it --rm -v ./app":/app ubuntu:latest #native linux

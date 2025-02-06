@@ -12,13 +12,21 @@ if __name__ == "__main__":
     if not os.path.exists("logs"):
         os.makedirs("logs")
 
+    thisLoggerName = "ektanaam"
     logger = logging.getLogger("ektanaam")
     logger.setLevel(logging.DEBUG)
 
     handler = TimedRotatingFileHandler('logs/snip.log', when='midnight', backupCount=5)
     handler.setLevel(logging.DEBUG)
-    # formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(funcName)s - %(message)s - %(module)s - %(created)f - %(relativeCreated)d - %(msecs)d - %(exc_info)s - %(exc_text)s - %(stack_info)s - %(pathname)s')
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+    # Adding a StreamHandler to the logger
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.DEBUG)
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
     
     '''
     Notes:
@@ -38,15 +46,32 @@ if __name__ == "__main__":
 
     logger.info("Starting up")
 
-    threadObj = thClass()
-    threadObj_thread = threading.Thread(target=threadObj.run)
-    threadObj_thread.start()
 
-    obj = chClass()
+    obj = chClass(loggerName=thisLoggerName)
     obj.getSomeVar()
     
-    if threadObj_thread.is_alive():
+    # if threadObj_thread.is_alive():
         
-        threadObj_thread.join()
+    #     threadObj_thread.join()
+    # threadObj = thClass(loggerName=thisLoggerName)
+    # threadObj_thread = threading.Thread(target=threadObj.run)
+    # threadObj_thread.start()
 
     logger.info("Shutting down")
+
+    import datetime
+    habba = 100000
+    starttime = (datetime.datetime.now())
+    for _ in range(habba):
+        logger.debug("asldfjalskfdja;lskfj;alskfdj;laskjfdalksdjfl;asdfjl;asfalkflasdjflasjdflakdfjlaskjdflaksdjflakjsdflkasjdlfkjasdlfjalsfjalsfjasl;fjalsfkj")
+    breaktime = (datetime.datetime.now())
+    for _ in range(habba):
+        print("asldfjalskfdja;lskfj;alskfdj;laskjfdalksdjfl;asdfjl;asfalkflasdjflasjdflakdfjlaskjdflaksdjflakjsdflkasjdlfkjasdlfjalsfjalsfjasl;fjalsfkj")
+    endtime = (datetime.datetime.now())
+
+    print("debug took")
+    print(breaktime - starttime)
+    print()
+    print("print took")
+    print(endtime-breaktime)
+    exit(0)
