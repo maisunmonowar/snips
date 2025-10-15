@@ -14,6 +14,10 @@
 #include <ws2tcpip.h>
 #include <string>
 #include <windows.h>
+#include <queue>
+#include <mutex>
+#include <condition_variable>
+#include <atomic>
 
 class MySocketClass
 {
@@ -41,12 +45,15 @@ public:
 	MySocketClass();
 	~MySocketClass();
 	int sendData(char *ourMessage, int ourMessage_size);
+	// returns true to continue, false to indicate termination message received
 	bool receiveSomething();
-	bool should_i_quit(); // added accessor
+
+	// Run method to be executed in udp_client thread.
+	// It consumes messages from the queue, sends them and checks server replies.
+	void run(std::queue<std::string> &q, std::mutex &m, std::condition_variable &cv, std::atomic<bool> &finished);
 
 private:
 	bool connectionActive = false;
-	bool time_to_quit = false;
 };
 
 #endif // __U_H__

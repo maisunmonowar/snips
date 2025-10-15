@@ -23,6 +23,8 @@
 MySocketClass::MySocketClass()
 {
 	printf("mySocketClass::Constructor\n");
+	// debug: print thread id where constructor runs
+	std::cout << "mySocketClass::Constructor thread id: " << std::this_thread::get_id() << std::endl;
 	PCSTR hostname = "127.0.0.1";
 	WSADATA wsaData;
 	struct addrinfo *result = NULL,
@@ -123,7 +125,6 @@ bool MySocketClass::receiveSomething()
 		if (err == WSAETIMEDOUT)
 		{
 			// no data available right now
-			// std::cout << "recv timed out." << std::endl;
 			return true;
 		}
 		std::cout << "recv failed with error: " << err << std::endl;
@@ -141,9 +142,8 @@ bool MySocketClass::receiveSomething()
 	size_t klen = termination_string.size();
 	if ((size_t)bytes >= klen && std::string(recvbuf, klen) == termination_string)
 	{
-		std::cout << "\trecorder::receiveSomething -> self terminating. " << std::endl;
-		time_to_quit = true;
-		return false; // signal caller to terminate
+		std::cout << "\trecorder::receiveSomething -> termination received." << std::endl;
+		return false; // indicate to caller that termination was received
 	}
 	else
 	{
@@ -156,6 +156,10 @@ int MySocketClass::sendData(char *ourMessage, int ourMessage_insize)
 {
 
 	std::cout << "\tmySocketClass::sendData" << std::endl;
+	// debug: show thread id and message size
+	std::cout << "\tmySocketClass::sendData thread id: " << std::this_thread::get_id()
+			  << " size: " << ourMessage_insize << std::endl;
+
 	if (ConnectSocket == INVALID_SOCKET)
 	{
 		printf("sendDAta -> invalid socket\n");
@@ -184,6 +188,47 @@ int MySocketClass::sendData(char *ourMessage, int ourMessage_insize)
 	return 0;
 }
 
-bool MySocketClass::should_i_quit(){
-	return time_to_quit;
+
+// new: run method executed in the udp client thread
+void MySocketClass::run(std::queue<std::string> &q, std::mutex &m, std::condition_variable &cv, std::atomic<bool> &finished)
+{
+	// debug: indicate run started and thread id
+	std::cout << "MySocketClass::run() started in thread: " << std::this_thread::get_id() << std::endl;
+
+	while (!finished.load())
+	{
+		std::unique_lock<std::mutex> lk(m);
+		cv.wait(lk, [&]() { return !q.empty() || finished.load(); });
+		if (finished.load() && q.empty()) {
+			// exit requested and no more items
+			std::cout << "MySocketClass::run() exiting (finished & empty) in thread: " << std::this_thread::get_id() << std::endl;
+			return;
+		}
+		// pop one message
+		std::string msg = std::move(q.front());
+		q.pop();
+		lk.unlock();
+
+		// debug: show message being processed and thread id
+		std::cout << "MySocketClass::run() processing message in thread " << std::this_thread::get_id()
+				  << " -> " << msg << std::endl;
+
+		// send message
+		if (connectionActive && error_status_self == all_ok) {
+			sendData(const_cast<char*>(msg.c_str()), (int)msg.size());
+		}
+
+		// attempt to receive server response (may time out)
+		bool cont = receiveSomething();
+		if (!cont) {
+			// server requested termination; propagate to main via atomic flag
+			finished.store(true);
+			cv.notify_all();
+			std::cout << "MySocketClass::run() detected termination message. Setting finished=true and exiting thread: "
+					  << std::this_thread::get_id() << std::endl;
+			return;
+		}
+	}
+	// debug: normal exit
+	std::cout << "MySocketClass::run() loop ended in thread: " << std::this_thread::get_id() << std::endl;
 }
