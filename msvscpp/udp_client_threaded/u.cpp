@@ -3,232 +3,226 @@
 #endif
 #define WIN32_LEAN_AND_MEAN // do not move this line.
 
-#include <iostream>
-#include <chrono>
-#include <thread>
-#include <atomic>
-#include <windows.h>		// include windows types
-#include <winsock2.h>		// Winsock2 must be included before ws2tcpip
-#include <ws2tcpip.h>		// for socket functions.
-#include <stdlib.h>
-#include <stdio.h>
-#include <NetSh.h>
 #include "u.h"
+#include <NetSh.h>
+#include <atomic>
+#include <chrono>
+#include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <thread>
+#include <windows.h>  // include windows types
+#include <winsock2.h> // Winsock2 must be included before ws2tcpip
+#include <ws2tcpip.h> // for socket functions.
 
 // Need to link with Ws2_32.lib, Mswsock.lib, and Advapi32.lib
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "Mswsock.lib")
 #pragma comment(lib, "AdvApi32.lib")
 
-MySocketClass::MySocketClass()
-{
-	printf("mySocketClass::Constructor\n");
-	// debug: print thread id where constructor runs
-	std::cout << "mySocketClass::Constructor thread id: " << std::this_thread::get_id() << std::endl;
-	PCSTR hostname = "127.0.0.1";
-	WSADATA wsaData;
-	struct addrinfo *result = NULL,
-					*ptr = NULL,
-					hints;
+MySocketClass::MySocketClass() {
+  printf("mySocketClass::Constructor\n");
+  std::cout << "mySocketClass::Constructor thread id: " << std::endl;
+  PCSTR hostname = "127.0.0.1";
+  WSADATA wsaData;
+  struct addrinfo *result = NULL, *ptr = NULL, hints;
 
-	// Initialize Winsock
-	iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
-	if (iResult != 0)
-	{
-		printf("mySocketClas::Constructor -> wsa startup error\n");
-		error_status_self = wsa_startup_error;
-		return;
-	}
-	ZeroMemory(&hints, sizeof(hints)); // init memory to zero.
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_DGRAM;
-	hints.ai_protocol = IPPROTO_UDP;
+  // Initialize Winsock
+  iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+  if (iResult != 0) {
+    printf("mySocketClas::Constructor -> wsa startup error\n");
+    error_status_self = wsa_startup_error;
+    return;
+  }
+  ZeroMemory(&hints, sizeof(hints)); // init memory to zero.
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_DGRAM;
+  hints.ai_protocol = IPPROTO_UDP;
 
-	// Resolve the server address and port
-	auto a = getaddrinfo(hostname, DEFAULT_PORT, &hints, &result);
-	if (a != 0)
-	{
-		error_status_self = addrinfo_error;
-		WSACleanup();
-		return;
-	}
+  // Resolve the server address and port
+  auto a = getaddrinfo(hostname, DEFAULT_PORT, &hints, &result);
+  if (a != 0) {
+    error_status_self = addrinfo_error;
+    WSACleanup();
+    return;
+  }
 
-	// Attempt to connect to an address until one succeeds
-	for (ptr = result; ptr != NULL; ptr = ptr->ai_next)
-	{
-		// Create a SOCKET for connecting to server
-		ConnectSocket = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
-		if (ConnectSocket == INVALID_SOCKET) {
-			continue;
-		}
+  // Attempt to connect to an address until one succeeds
+  for (ptr = result; ptr != NULL; ptr = ptr->ai_next) {
+    // Create a SOCKET for connecting to server
+    ConnectSocket = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+    if (ConnectSocket == INVALID_SOCKET) {
+      continue;
+    }
 
-		// Connect to server.
-		iResult = connect(ConnectSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
-		if (iResult == SOCKET_ERROR)
-		{
-			closesocket(ConnectSocket);
-			ConnectSocket = INVALID_SOCKET;
-			continue;
-		}
-		printf("mySocketClas::Constructor -> conncetion success\n");
-		connectionActive = true;
-		break;
-	}
+    // Connect to server.
+    iResult = connect(ConnectSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
+    if (iResult == SOCKET_ERROR) {
+      closesocket(ConnectSocket);
+      ConnectSocket = INVALID_SOCKET;
+      continue;
+    }
+    printf("mySocketClas::Constructor -> conncetion success\n");
+    connectionActive = true;
+    break;
+  }
 
-	freeaddrinfo(result); // because you called getaddrinfo()
+  freeaddrinfo(result); // because you called getaddrinfo()
 
-	if (!connectionActive) {
-		error_status_self = connection_failed;
-		// leave WSA running; destructor will cleanup if needed
-		return;
-	}
+  if (!connectionActive) {
+    error_status_self = connection_failed;
+    // leave WSA running; destructor will cleanup if needed
+    return;
+  }
 
-	// setting timeout value (milliseconds)
-	DWORD ti = 500; // 500 ms
-	setsockopt(ConnectSocket, SOL_SOCKET, SO_RCVTIMEO, (const char *)&ti, sizeof(ti));
+  // setting timeout value (milliseconds)
+  DWORD ti = 500; // 500 ms
+  setsockopt(ConnectSocket, SOL_SOCKET, SO_RCVTIMEO, (const char *)&ti,
+             sizeof(ti));
 }
 
-MySocketClass::~MySocketClass()
-{
-	printf("mySocketClas::destructor\n");
-	if (connectionActive)
-	{
-		printf("mySocketClas::destructor-> connetction was active\n");
-		// cleanup
-		iResult = shutdown(ConnectSocket, SD_SEND);
-		if (iResult == SOCKET_ERROR)
-		{
-			printf("mySocketClas::destructor -> shutdown failed with error: %d\n", WSAGetLastError());
-			closesocket(ConnectSocket);
-			WSACleanup();
-		}
-		closesocket(ConnectSocket);
-		WSACleanup();
-		connectionActive = false;
-		printf("mySocketClas::destructor->cleanup done. \n");
-	}
+MySocketClass::~MySocketClass() {
+  printf("mySocketClas::destructor\n");
+  if (connectionActive) {
+    printf("mySocketClas::destructor-> connetction was active\n");
+    // cleanup
+    iResult = shutdown(ConnectSocket, SD_SEND);
+    if (iResult == SOCKET_ERROR) {
+      printf("mySocketClas::destructor -> shutdown failed with error: %d\n",
+             WSAGetLastError());
+      closesocket(ConnectSocket);
+      WSACleanup();
+    }
+    closesocket(ConnectSocket);
+    WSACleanup();
+    connectionActive = false;
+    printf("mySocketClas::destructor->cleanup done. \n");
+  }
 }
 
-bool MySocketClass::receiveSomething()
-{
-	std::cout << "\tMySocketClass::receive" << std::endl;
-	if (error_status_self != all_ok)
-	{
-		return true; // connection error exists. returning default response so caller continues.
-	}
+bool MySocketClass::receiveSomething() {
+  std::cout << "\tMySocketClass::receive" << std::endl;
+  if (error_status_self != all_ok) {
+    return true; // connection error exists. returning default response so
+                 // caller continues.
+  }
 
-	int bytes = recv(ConnectSocket, recvbuf, recvbuflen - 1, 0);
-	if (bytes == SOCKET_ERROR)
-	{
-		int err = WSAGetLastError();
-		// timeout or other error: just return true to continue running
-		if (err == WSAETIMEDOUT)
-		{
-			// no data available right now
-			return true;
-		}
-		std::cout << "recv failed with error: " << err << std::endl;
-		return true;
-	}
-	if (bytes == 0)
-	{
-		// no data / remote closed - for UDP this is unusual; continue
-		return true;
-	}
-	recvbuf[bytes] = '\0';
-	std::cout << "Received: " << recvbuf << std::endl;
+  // Use ioctlsocket to check if data is ready (FIONREAD)
+  u_long bytesAvail = 0;
+  int ioRes = ioctlsocket(ConnectSocket, FIONREAD, &bytesAvail);
+  if (ioRes == SOCKET_ERROR) {
+    int err = WSAGetLastError();
+    std::cout << "ioctlsocket failed with error: " << err << std::endl;
+    // Treat as no data available now; continue running.
+    return true;
+  }
 
-	// check for termination message
-	size_t klen = termination_string.size();
-	if ((size_t)bytes >= klen && std::string(recvbuf, klen) == termination_string)
-	{
-		std::cout << "\trecorder::receiveSomething -> termination received." << std::endl;
-		return false; // indicate to caller that termination was received
-	}
-	else
-	{
-		std::cout << "\trecorder::receiveSomething -> continuing." << std::endl;
-		return true; // stay alive
-	}
+  if (bytesAvail == 0) {
+    // No data ready to read at the moment.
+    return true;
+  }
+
+  // Read up to either the available bytes or the buffer size - 1
+  int toRead = recvbuflen - 1;
+  if (bytesAvail < (u_long)toRead) {
+    toRead = static_cast<int>(bytesAvail);
+  }
+
+  int bytes = recv(ConnectSocket, recvbuf, toRead, 0);
+  if (bytes == SOCKET_ERROR) {
+    int err = WSAGetLastError();
+    std::cout << "recv failed with error: " << err << std::endl;
+    return true;
+  }
+  if (bytes == 0) {
+    // no data / remote closed - for UDP this is unusual; continue
+    return true;
+  }
+  recvbuf[bytes] = '\0';
+  std::cout << "Received: " << recvbuf << std::endl;
+
+  // check for termination message
+  size_t klen = termination_string.size();
+  if ((size_t)bytes >= klen &&
+      std::string(recvbuf, klen) == termination_string) {
+    std::cout << "\trecorder::receiveSomething -> termination received."
+              << std::endl;
+    return false; // indicate to caller that termination was received
+  } else {
+    std::cout << "\trecorder::receiveSomething -> continuing." << std::endl;
+    return true; // stay alive
+  }
 }
 
-int MySocketClass::sendData(char *ourMessage, int ourMessage_insize)
-{
+int MySocketClass::sendData(char *ourMessage, int ourMessage_insize) {
 
-	std::cout << "\tmySocketClass::sendData" << std::endl;
-	// debug: show thread id and message size
-	std::cout << "\tmySocketClass::sendData thread id: " << std::this_thread::get_id()
-			  << " size: " << ourMessage_insize << std::endl;
+  std::cout << "\tmySocketClass::sendData" << std::endl;
+  // debug: show thread id and message size
 
-	if (ConnectSocket == INVALID_SOCKET)
-	{
-		printf("sendDAta -> invalid socket\n");
-		return -1;
-	}
+  if (ConnectSocket == INVALID_SOCKET) {
+    printf("sendDAta -> invalid socket\n");
+    return -1;
+  }
 
-	if (error_status_self != all_ok)
-	{
-		return -2; // connection error exists. returning default response.
-	}
+  if (error_status_self != all_ok) {
+    return -2; // connection error exists. returning default response.
+  }
 
-	if (connectionActive)
-	{
-		int sent = send(ConnectSocket, ourMessage, ourMessage_insize, 0);
-		if (sent == SOCKET_ERROR) {
-			std::cout << "send failed with err: " << WSAGetLastError() << std::endl;
-			return -4;
-		}
-		std::cout << "connection was active and message sent" << std::endl;
-	}
-	else
-	{
-		std::cout << "\tMySocketClass::senddata -> Not Sending the data cause connection not active." << std::endl;
-		return -3;
-	}
-	return 0;
+  if (connectionActive) {
+    int sent = send(ConnectSocket, ourMessage, ourMessage_insize, 0);
+    if (sent == SOCKET_ERROR) {
+      std::cout << "send failed with err: " << WSAGetLastError() << std::endl;
+      return -4;
+    }
+    std::cout << "connection was active and message sent" << std::endl;
+  } else {
+    std::cout << "\tMySocketClass::senddata -> Not Sending the data cause "
+                 "connection not active."
+              << std::endl;
+    return -3;
+  }
+  return 0;
 }
-
 
 // new: run method executed in the udp client thread
-void MySocketClass::run(std::queue<std::string> &q, std::mutex &m, std::condition_variable &cv, std::atomic<bool> &finished)
-{
-	// debug: indicate run started and thread id
-	std::cout << "MySocketClass::run() started in thread: " << std::this_thread::get_id() << std::endl;
+void MySocketClass::run(std::queue<std::string> &q, std::mutex &m,
+                        std::condition_variable &cv,
+                        std::atomic<bool> &finished) {
+  // debug: indicate run started and thread id
+  std::cout << "MySocketClass::run() started in thread: " << std::endl;
 
-	while (!finished.load())
-	{
-		std::unique_lock<std::mutex> lk(m);
-		cv.wait(lk, [&]() { return !q.empty() || finished.load(); });
-		if (finished.load() && q.empty()) {
-			// exit requested and no more items
-			std::cout << "MySocketClass::run() exiting (finished & empty) in thread: " << std::this_thread::get_id() << std::endl;
-			return;
-		}
-		// pop one message
-		std::string msg = std::move(q.front());
-		q.pop();
-		lk.unlock();
+  while (!finished.load()) {
+    std::unique_lock<std::mutex> lk(m);
+    cv.wait(lk, [&]() { return !q.empty() || finished.load(); });
+    if (finished.load() && q.empty()) {
+      // exit requested and no more items
 
-		// debug: show message being processed and thread id
-		std::cout << "MySocketClass::run() processing message in thread " << std::this_thread::get_id()
-				  << " -> " << msg << std::endl;
+      return;
+    }
+    // pop one message
+    std::string msg = std::move(q.front());
+    q.pop();
+    lk.unlock();
 
-		// send message
-		if (connectionActive && error_status_self == all_ok) {
-			sendData(const_cast<char*>(msg.c_str()), (int)msg.size());
-		}
+    // debug: show message being processed and thread id
+    std::cout << "MySocketClass::run() processing message "
+              << " -> " << msg << std::endl;
 
-		// attempt to receive server response (may time out)
-		bool cont = receiveSomething();
-		if (!cont) {
-			// server requested termination; propagate to main via atomic flag
-			finished.store(true);
-			cv.notify_all();
-			std::cout << "MySocketClass::run() detected termination message. Setting finished=true and exiting thread: "
-					  << std::this_thread::get_id() << std::endl;
-			return;
-		}
-	}
-	// debug: normal exit
-	std::cout << "MySocketClass::run() loop ended in thread: " << std::this_thread::get_id() << std::endl;
+    // send message
+    if (connectionActive && error_status_self == all_ok) {
+      sendData(const_cast<char *>(msg.c_str()), (int)msg.size());
+    }
+
+    // attempt to receive server response (may time out)
+    bool cont = receiveSomething();
+    if (!cont) {
+      // server requested termination; propagate to main via atomic flag
+      finished.store(true);
+      cv.notify_all();
+      std::cout << "MySocketClass::run() detected termination message. Setting "
+                   "finished=true and exiting: "
+                << std::endl;
+      return;
+    }
+  }
 }
