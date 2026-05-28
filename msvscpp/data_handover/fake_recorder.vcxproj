@@ -48,6 +48,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{6813E71D-E12F-4259-B108-932DAD9D02BC}</ProjectGuid>
     <ProjectName>data_handover</ProjectName>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -121,6 +122,7 @@
       <AdditionalIncludeDirectories>..\spdlog\include;$(DtapiIncludePath);$(jsonIncludePath);$(jsonIncludePath);.\Import</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <PrecompiledHeaderFile />
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -161,6 +163,7 @@
       <AdditionalIncludeDirectories>..\spdlog\include;$(DtapiIncludePath);$(jsonIncludePath);.\Import</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PrecompiledHeaderFile />
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -173,6 +176,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Source\bbProcess.h" />
+    <ClInclude Include="Source\common.h" />
     <ClInclude Include="Source\main_file.h" />
     <ClInclude Include="Source\tfProcess.h" />
   </ItemGroup>
