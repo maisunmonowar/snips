@@ -1,5 +1,4 @@
 #include "bbProcess.h"
-#include "tfProcess.h"
 
 void bbProcessor::stripBB(std::queue<custom_struct_for_queue> &q_dataToProcess,
                           std::mutex &mut_main2support,
@@ -10,9 +9,8 @@ void bbProcessor::stripBB(std::queue<custom_struct_for_queue> &q_dataToProcess,
   char *buf_bbFrame = new char[c_BufSize];
   char *buf_extractedData = new char[c_BufSize * 2];
   // todo: Unnecessary heap allocation for simple integers.
-  int *buf_bbFrame_len = new int;
   int *buf_extractedData_len = new int;
-  *buf_bbFrame_len = c_BufSize;
+  int buf_bbFrame_len = c_BufSize;
   *buf_extractedData_len = c_BufSize * 2;
   
   // queue and other things for another thread
@@ -23,7 +21,7 @@ void bbProcessor::stripBB(std::queue<custom_struct_for_queue> &q_dataToProcess,
 
   
   auto tf_processor = tfProcessor();
-  tf_processor.filename_c = filename_c;
+  
   std::thread worker_tf_processor =
       std::thread(&tfProcessor::sanitizeTf, &tf_processor,
                   std::ref(queue_bbFrame_tf), std::ref(mutex_bbFrame_tf),
@@ -39,7 +37,8 @@ void bbProcessor::stripBB(std::queue<custom_struct_for_queue> &q_dataToProcess,
       if (!q_dataToProcess.empty()) {
         memcpy(buf_bbFrame, q_dataToProcess.front().pointerToByte,
                q_dataToProcess.front().numOfByte);
-        *buf_bbFrame_len = q_dataToProcess.front().numOfByte;
+        buf_bbFrame_len = q_dataToProcess.front().numOfByte;
+        std::cout << "BB Process says: " << buf_bbFrame << std::endl;
         somethingWaitingToBeProcessed = true;
         delete q_dataToProcess.front().pointerToByte;
         q_dataToProcess.pop();
@@ -50,7 +49,7 @@ void bbProcessor::stripBB(std::queue<custom_struct_for_queue> &q_dataToProcess,
     // time to process the data
     if (somethingWaitingToBeProcessed) {
       // pretend the buf bbframe is the cleaned up data
-      memcpy(buf_extractedData, buf_bbFrame, buf_bbFrame_len);
+      memcpy(buf_extractedData, buf_bbFrame, buf_bbFrame_len); 
       somethingWaitingToBeProcessed =          false; // because at this point every thing is processed.
       {
         std::lock_guard<std::mutex> lock{mutex_bbFrame_tf};
@@ -63,9 +62,9 @@ void bbProcessor::stripBB(std::queue<custom_struct_for_queue> &q_dataToProcess,
       }
     }
     if (ab_should_worker_be_working.load()) {
-      spdlog::debug("work work work work work");
+      // pass
     } else {
-      spdlog::debug("off off off off off off");
+      
       break;
     }
   } // end of infinited loop
@@ -75,6 +74,5 @@ void bbProcessor::stripBB(std::queue<custom_struct_for_queue> &q_dataToProcess,
   worker_tf_processor.join();
   delete[] buf_bbFrame;
   delete[] buf_extractedData;
-  delete buf_bbFrame_len;
   delete buf_extractedData_len;
 }

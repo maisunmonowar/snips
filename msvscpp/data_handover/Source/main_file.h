@@ -6,10 +6,6 @@
 
 //.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.- Include files -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-#include "DTAPI.h"
 #include <stdarg.h>
-#include "const_def.h"
-#include <DTAPI.h>
-#include "cmd_parsing.h"
-#include "support_functions.h"
 #include "bbProcess.h"
 // Windows Microsoft uses with _ => Linux uses without
 #ifndef WIN32

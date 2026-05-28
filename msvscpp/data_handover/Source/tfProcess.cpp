@@ -1,19 +1,19 @@
 #include "tfProcess.h"
+
+
 void tfProcessor::sanitizeTf(
-	std::queue<s> &q_tf,
+	std::queue<custom_struct_for_queue> &q_tf,
 	std::mutex &mut_tf,
 	std::condition_variable &cv_tf,
 	std::atomic<bool> &ab_tf)
 {
 	bool somethingWaitingToBeProcessed = false;
-	char *buf_tf = new char[c_BufSize * 2];
-	char *buf_sanitized = new char[c_BufSize * 2];
+	char *buf_tf = new char[30];
+	char *buf_sanitized = new char[30];
 	int *buf_tf_len = new int;
 	int *buf_sanitized_len = new int;
 
-#ifdef _DEBUG
-	std::cout << "\t\t\t\t tf::filename_c: " << filename_c << std::endl;
-#endif
+
 	while (true)
 	{
 		{
@@ -28,8 +28,10 @@ void tfProcessor::sanitizeTf(
 				// void * memcpy ( void * destination, const void * source, size_t num )
 				memcpy(buf_tf, q_tf.front().pointerToByte, q_tf.front().numOfByte);
 				*buf_tf_len = q_tf.front().numOfByte;
-				delete q_tf.front().pointerToByte; // deallocate the heap memory.
+				delete q_tf.front().pointerToByte; // this is what I aim to improve.
 				q_tf.pop();
+                                std::cout << " TF Process says: " << buf_tf
+                                          << std::endl;
 			} // if !data.empty()
 		}	  // mutex is out of scope
 		
@@ -42,8 +44,5 @@ void tfProcessor::sanitizeTf(
 	delete[] buf_sanitized;
 	delete buf_tf_len;
 	delete buf_sanitized_len;
-	std::cout << "\t\t\t\t recorder.exe::tf_proc: CRC Passed = " 
-		<< processing_results.crc_passed
-		<< "  CRC Failed = " 
-		<< processing_results.crc_failed << std::endl;
+	
 } // end of sanitize_tf
