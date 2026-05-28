@@ -1,20 +1,14 @@
 #include "bbProcess.h"
 
-void bbProcessor::stripBB(std::queue<custom_struct_for_queue> &q_dataToProcess,
+void bbProcessor::stripBB(std::queue<DataChunk> &q_dataToProcess,
                           std::mutex &mut_main2support,
                           std::condition_variable &cv_main_to_bb,
                           std::atomic<bool> &ab_should_worker_be_working) {
 
   bool somethingWaitingToBeProcessed = false;
-  char *buf_bbFrame = new char[c_BufSize];
-  char *buf_extractedData = new char[c_BufSize * 2];
-  // todo: Unnecessary heap allocation for simple integers.
-  int *buf_extractedData_len = new int;
-  int buf_bbFrame_len = c_BufSize;
-  *buf_extractedData_len = c_BufSize * 2;
   
   // queue and other things for another thread
-  std::queue<custom_struct_for_queue> queue_bbFrame_tf;
+  std::queue<DataChunk> queue_bbFrame_tf;
   std::condition_variable cv_bbFrame_tf;
   std::mutex mutex_bbFrame_tf;
   std::atomic<bool> kill_signal_bb_to_tf(false);
@@ -28,51 +22,49 @@ void bbProcessor::stripBB(std::queue<custom_struct_for_queue> &q_dataToProcess,
                   std::ref(cv_bbFrame_tf), std::ref(kill_signal_bb_to_tf));
 
   while (true) {
+    DataChunk localChunk;
     {
+
       std::unique_lock<std::mutex> lock{mut_main2support};
       cv_main_to_bb.wait(lock, [&] {
         return !q_dataToProcess.empty() || !ab_should_worker_be_working.load();
       });
 
       if (!q_dataToProcess.empty()) {
-        memcpy(buf_bbFrame, q_dataToProcess.front().pointerToByte,
-               q_dataToProcess.front().numOfByte);
-        buf_bbFrame_len = q_dataToProcess.front().numOfByte;
-        std::cout << "BB Process says: " << buf_bbFrame << std::endl;
-        somethingWaitingToBeProcessed = true;
-        delete q_dataToProcess.front().pointerToByte;
+        localChunk = std::move(q_dataToProcess.front());
         q_dataToProcess.pop();
+        std::cout << "BB Process says: ";
+        std::cout.write(localChunk.data(), localChunk.size());
+        std::cout << std::endl;
+        somethingWaitingToBeProcessed = true;
       } // if !data.empty()
     }   // mutex is out of scope
         
     
     // time to process the data
     if (somethingWaitingToBeProcessed) {
-      // pretend the buf bbframe is the cleaned up data
-      memcpy(buf_extractedData, buf_bbFrame, buf_bbFrame_len); 
+      // pretend the localChunk is the cleaned up data
+      //memcpy(buf_extractedData, buf_bbFrame, buf_bbFrame_len); >> this is no longer needed.
       somethingWaitingToBeProcessed =          false; // because at this point every thing is processed.
+      // note: as we are storing this data in RAM there is no rush to process this data. 
+      // a little bit of delay is acceptable.
       {
         std::lock_guard<std::mutex> lock{mutex_bbFrame_tf};
-        queue_bbFrame_tf.emplace(new char[*buf_extractedData_len],
-                                 *buf_extractedData_len);
-        // memcopy
-        memcpy(queue_bbFrame_tf.back().pointerToByte, buf_extractedData,
-               *buf_extractedData_len);
+        queue_bbFrame_tf.emplace(std::move(localChunk));
         cv_bbFrame_tf.notify_all();
       }
     }
-    if (ab_should_worker_be_working.load()) {
-      // pass
-    } else {
-      
+    // Only exit the loop if we're told to stop AND we have fully emptied the
+    // queue
+    if (!ab_should_worker_be_working.load() && q_dataToProcess.empty()) {
       break;
     }
   } // end of infinited loop
 
-  kill_signal_bb_to_tf.store(true);
-  cv_bbFrame_tf.notify_all();
+{
+    std::lock_guard<std::mutex> lock{mutex_bbFrame_tf};
+    kill_signal_bb_to_tf.store(true);
+    cv_bbFrame_tf.notify_all(); // Safe!
+  }
   worker_tf_processor.join();
-  delete[] buf_bbFrame;
-  delete[] buf_extractedData;
-  delete buf_extractedData_len;
 }
